@@ -17,8 +17,8 @@ export interface OpcaoFormulario {
 }
 
 export interface DadosCaracteristicasImovel {
-  /** Código de uma única opção de `OPCOES_LOCALIZACAO` (ou `''`). */
-  localizacao: string;
+  /** Códigos de `OPCOES_LOCALIZACAO`. */
+  localizacao: string[];
   /** Códigos de `OPCOES_PRINCIPAIS_CAUSAS`. */
   principaisCausas: string[];
   imagemLocalizacao: string;
@@ -48,28 +48,28 @@ export interface DadosPadraoConstrutivo {
   numeroComodos: string;
   numeroDormitorios: string;
   tempoConstrucao: string;
-  /** Código de uma única opção de `OPCOES_PISO` (ou `''`). */
-  piso: string;
+  /** Códigos de `OPCOES_PISO`. */
+  piso: string[];
   outroPisoEspecificacao: string;
-  /** Código de uma única opção de `OPCOES_SITUACAO_PISO` (ou `''`). */
-  situacaoPiso: string;
+  /** Códigos de `OPCOES_SITUACAO_PISO`. */
+  situacaoPiso: string[];
   imagemPiso: string;
   imagemSituacaoPiso: string;
 }
 
-export const OPCAO_PISO_OUTRO = 'outro';
+export const OPCAO_PISO_OUTRO = 'Outro (Espec)';
 
 export const OPCOES_PISO: OpcaoFormulario[] = [
-  { valor: 'terra_batida', rotulo: 'Terra batida' },
-  { valor: 'ceramica', rotulo: 'Cerâmica' },
-  { valor: 'madeira', rotulo: 'Madeira' },
-  { valor: 'cimento', rotulo: 'Cimento' },
+  { valor: 'Terra batida', rotulo: 'Terra batida' },
+  { valor: 'Cerâmica', rotulo: 'Cerâmica' },
+  { valor: 'Madeira', rotulo: 'Madeira' },
+  { valor: 'Cimento', rotulo: 'Cimento' },
   { valor: OPCAO_PISO_OUTRO, rotulo: 'Outro (Espec)' },
 ];
 
 export const OPCOES_SITUACAO_PISO: OpcaoFormulario[] = [
-  { valor: 'abatimento', rotulo: 'Abatimento' },
-  { valor: 'rachadura', rotulo: 'Rachadura' },
+  { valor: 'Rachadura', rotulo: 'Rachadura' },
+  { valor: 'Abatimento', rotulo: 'Abatimento' },
 ];
 
 export interface DadosEstrutura {
@@ -140,6 +140,7 @@ export const OPCAO_COBERTURA_OUTRO = 'Outro (Espec)';
 
 export const OPCOES_COBERTURA: string[] = [
   'Cerâmica - inglesa',
+  'Cerâmica - Inglesa',
   'Canal',
   'Amianto',
   'Laje',
@@ -255,12 +256,14 @@ export const OPCOES_INTERVENCAO_PAREDE: string[] = [
   'Recuperação',
   'Revestimento',
   'Reforço estrutural',
+  'Revisão',
 ];
 
 export const OPCOES_INTERVENCAO_COBERTA: string[] = [
   'Reconstrução',
   'Reposição',
   'Tratamento de madeiramento',
+  'Revisão',
 ];
 
 export const OPCOES_INDICACAO_INTERVENCAO: string[] = [
@@ -268,6 +271,7 @@ export const OPCOES_INDICACAO_INTERVENCAO: string[] = [
   'Imóvel',
   'Construção de risco',
   'Ocupação de área imprópria',
+  'Monitoramento',
 ];
 
 export const OPCOES_INTERVENCAO_PISO: string[] = [
@@ -364,7 +368,7 @@ export const FORMULARIO_INICIAL_VAZIO: FormularioVistoria = {
     numero: '',
   },
   caracteristicasImovel: {
-    localizacao: '',
+    localizacao: [],
     principaisCausas: [],
     imagemLocalizacao: '',
     imagemPrincipaisCausas: '',
@@ -375,9 +379,9 @@ export const FORMULARIO_INICIAL_VAZIO: FormularioVistoria = {
     numeroComodos: '',
     numeroDormitorios: '',
     tempoConstrucao: '',
-    piso: '',
+    piso: [],
     outroPisoEspecificacao: '',
-    situacaoPiso: '',
+    situacaoPiso: [],
     imagemPiso: '',
     imagemSituacaoPiso: '',
   },

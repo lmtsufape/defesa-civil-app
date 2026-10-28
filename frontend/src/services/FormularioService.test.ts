@@ -17,7 +17,7 @@ const formularioPreenchido = (): FormularioVistoria => ({
   },
   caracteristicasImovel: {
     ...FORMULARIO_INICIAL_VAZIO.caracteristicasImovel,
-    localizacao: 'encosta',
+    localizacao: ['encosta'],
     principaisCausas: ['recalque_do_solo', 'fenda'],
   },
   padraoConstrutivo: {
@@ -27,8 +27,8 @@ const formularioPreenchido = (): FormularioVistoria => ({
     numeroComodos: '5',
     numeroDormitorios: '2',
     tempoConstrucao: '10',
-    piso: 'ceramica',
-    situacaoPiso: 'abatimento',
+    piso: ['Cerâmica'],
+    situacaoPiso: ['Abatimento'],
   },
 });
 
@@ -42,18 +42,65 @@ describe('mapearFormularioParaBackend', () => {
       titular: 'João da Silva',
       endereco: 'Rua das Flores',
       numero: '123',
-      localizacao: 'encosta',
+      localizacao: ['encosta'],
       causas_problemas: ['recalque_do_solo', 'fenda'],
       num_pavimentos: 2,
       area_aproximada: 85.5,
       num_comodos: 5,
       num_dormitorios: 2,
       tempo_construcao_anos: 10,
-      piso: 'ceramica',
+      piso: ['Cerâmica'],
       piso_especificacao: null,
-      situacao_piso: 'abatimento',
+      situacao_piso: ['Abatimento'],
+      estrutura: [],
+      vedacao: [],
+      vedacao_especificacao: null,
+      situacao_parede: [],
+      revestimento_externo: [],
+      revestimento_externo_especificacao: null,
+      percentual_revestimento_interno: null,
+      revestimento_interno: [],
+      revestimento_interno_especificacao: null,
+      cobertura: [],
+      cobertura_especificacao: null,
+      conservacao_cobertura: [],
+      conservacao_edificacao: [],
+      instalacao_eletrica: [],
+      sanitario: [],
+      sanitario_especificacao: null,
+      destino_esgoto_primario: [],
+      destino_esgoto_primario_especificacao: null,
+      destino_aguas_servidas: [],
+      destino_aguas_servidas_especificacao: null,
+      destino_lixo: [],
+      destino_lixo_especificacao: null,
+      intervencao_parede: [],
+      intervencao_coberta: [],
+      indicacao_atuacao: [],
+      indicacao_demolicao: null,
+      intervencao_piso: [],
+      observacoes: null,
+      motivo_remocao: null,
+      motivo_remocao_especificacao: null,
+      encaminhamentos: [],
+      grau_risco: null,
+      analista_tecnico: null,
+      chefia_gerente: null,
+      data_conclusao: null,
     });
     expect(typeof preenchido_em).toBe('string');
+  });
+
+  it('permite múltiplos itens para localização, piso e situação do piso', () => {
+    const f = formularioPreenchido();
+    f.caracteristicasImovel.localizacao = ['encosta', 'topo_de_encosta'];
+    f.padraoConstrutivo.piso = ['Cerâmica', 'Cimento'];
+    f.padraoConstrutivo.situacaoPiso = ['Rachadura', 'Abatimento'];
+
+    const payload = mapearFormularioParaBackend(f);
+    expect(payload.localizacao).toEqual(['encosta', 'topo_de_encosta']);
+    expect(payload.piso).toEqual(['Cerâmica', 'Cimento']);
+    expect(payload.situacao_piso).toEqual(['Rachadura', 'Abatimento']);
   });
 
   it('envia campos opcionais vazios como null', () => {
@@ -70,7 +117,7 @@ describe('mapearFormularioParaBackend', () => {
     f.padraoConstrutivo.outroPisoEspecificacao = 'Porcelanato';
     expect(mapearFormularioParaBackend(f).piso_especificacao).toBeNull();
 
-    f.padraoConstrutivo.piso = 'outro';
+    f.padraoConstrutivo.piso = ['Outro (Espec)'];
     expect(mapearFormularioParaBackend(f).piso_especificacao).toBe('Porcelanato');
   });
 });
@@ -82,8 +129,8 @@ describe('primeiraEtapaComErro', () => {
 
   it('aponta a primeira etapa com campo obrigatório faltando', () => {
     const f = formularioPreenchido();
-    f.padraoConstrutivo.piso = '';
-    f.caracteristicasImovel.localizacao = '';
+    f.padraoConstrutivo.piso = [];
+    f.caracteristicasImovel.localizacao = [];
     expect(primeiraEtapaComErro(f)).toEqual({
       etapa: 2,
       erros: { localizacao: 'Selecione a localização' },
