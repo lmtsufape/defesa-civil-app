@@ -5,31 +5,23 @@ import {
   OPCOES_COBERTURA,
   OPCOES_REVESTIMENTO,
 } from '../../../domain/entities';
-import { CheckboxGroup, CheckboxOption, Input, ImageUpload } from '../../../components';
+import {
+  CheckboxGroup,
+  CheckboxOption,
+  ImageUpload,
+  Input,
+} from '../../../components';
 import { toggleOpcao } from './toggleOpcao';
 import './Etapa5.css';
 
 export interface EtapaRevestimentosProps {
   dados: DadosRevestimentos;
   onChange: (dados: DadosRevestimentos) => void;
-  erros?: Partial<Record<keyof DadosRevestimentos, string>>;
 }
 
-const EtapaRevestimentos = ({
-  dados,
-  onChange,
-  erros,
-}: EtapaRevestimentosProps) => {
-  const setCampo = (
-    campo: 'percentualRevestimentoInterno' | 'outroRevestimentoExternoEspecificacao' |
-      'outroRevestimentoInternoEspecificacao' | 'outraCoberturaEspecificacao',
-    valor: string
-  ) => {
-    onChange({ ...dados, [campo]: valor });
-  };
-
-  const handleRevestimentoExterno = (opcao: string) => {
-    const revestimentoExterno = toggleOpcao(dados.revestimentoExterno, opcao);
+const EtapaRevestimentos = ({ dados, onChange }: EtapaRevestimentosProps) => {
+  const handleRevestimentoExterno = (valor: string) => {
+    const revestimentoExterno = toggleOpcao(dados.revestimentoExterno, valor);
     onChange({
       ...dados,
       revestimentoExterno,
@@ -39,8 +31,8 @@ const EtapaRevestimentos = ({
     });
   };
 
-  const handleRevestimentoInterno = (opcao: string) => {
-    const revestimentoInterno = toggleOpcao(dados.revestimentoInterno, opcao);
+  const handleRevestimentoInterno = (valor: string) => {
+    const revestimentoInterno = toggleOpcao(dados.revestimentoInterno, valor);
     onChange({
       ...dados,
       revestimentoInterno,
@@ -50,8 +42,8 @@ const EtapaRevestimentos = ({
     });
   };
 
-  const handleCobertura = (opcao: string) => {
-    const cobertura = toggleOpcao(dados.cobertura, opcao);
+  const handleCobertura = (valor: string) => {
+    const cobertura = toggleOpcao(dados.cobertura, valor);
     onChange({
       ...dados,
       cobertura,
@@ -60,6 +52,10 @@ const EtapaRevestimentos = ({
         : '',
     });
   };
+
+  const revestimentoExternoOutro = dados.revestimentoExterno.includes(OPCAO_REVESTIMENTO_OUTRO);
+  const revestimentoInternoOutro = dados.revestimentoInterno.includes(OPCAO_REVESTIMENTO_OUTRO);
+  const coberturaOutro = dados.cobertura.includes(OPCAO_COBERTURA_OUTRO);
 
   return (
     <div className="etapa-card">
@@ -71,11 +67,7 @@ const EtapaRevestimentos = ({
       </header>
 
       <div className="etapa-card__campos">
-        <CheckboxGroup
-          label="Revestimento externo"
-          helperText="Marque todas as opções encontradas."
-          error={erros?.revestimentoExterno}
-        >
+        <CheckboxGroup label="Revestimento externo">
           {OPCOES_REVESTIMENTO.map((opcao) => (
             <CheckboxOption
               key={opcao}
@@ -86,36 +78,41 @@ const EtapaRevestimentos = ({
           ))}
         </CheckboxGroup>
 
-        {dados.revestimentoExterno.includes(OPCAO_REVESTIMENTO_OUTRO) && (
+        {revestimentoExternoOutro && (
           <Input
             label="Especifique o revestimento externo"
             placeholder="Especifique, se necessário"
             value={dados.outroRevestimentoExternoEspecificacao}
-            onChange={(e) => setCampo('outroRevestimentoExternoEspecificacao', e.target.value)}
-            error={erros?.outroRevestimentoExternoEspecificacao}
+            onChange={(e) =>
+              onChange({
+                ...dados,
+                outroRevestimentoExternoEspecificacao: e.target.value,
+              })
+            }
           />
         )}
 
         <ImageUpload
           label="Imagem do revestimento externo"
           value={dados.imagemRevestimentoExterno}
-          onChange={(imagemRevestimentoExterno) => onChange({ ...dados, imagemRevestimentoExterno })}
+          onChange={(imagemRevestimentoExterno) =>
+            onChange({ ...dados, imagemRevestimentoExterno })
+          }
         />
 
         <Input
-          label="Percentual do revestimento interno"
-          placeholder="Ex: 50"
-          inputMode="decimal"
+          label="Percentual de revestimento interno (%)"
+          placeholder="Ex: 80%"
           value={dados.percentualRevestimentoInterno}
-          onChange={(e) => setCampo('percentualRevestimentoInterno', e.target.value)}
-          error={erros?.percentualRevestimentoInterno}
+          onChange={(e) =>
+            onChange({
+              ...dados,
+              percentualRevestimentoInterno: e.target.value,
+            })
+          }
         />
 
-        <CheckboxGroup
-          label="Revestimento interno"
-          helperText="Marque todas as opções encontradas."
-          error={erros?.revestimentoInterno}
-        >
+        <CheckboxGroup label="Revestimento interno">
           {OPCOES_REVESTIMENTO.map((opcao) => (
             <CheckboxOption
               key={opcao}
@@ -126,27 +123,29 @@ const EtapaRevestimentos = ({
           ))}
         </CheckboxGroup>
 
-        {dados.revestimentoInterno.includes(OPCAO_REVESTIMENTO_OUTRO) && (
+        {revestimentoInternoOutro && (
           <Input
             label="Especifique o revestimento interno"
             placeholder="Especifique, se necessário"
             value={dados.outroRevestimentoInternoEspecificacao}
-            onChange={(e) => setCampo('outroRevestimentoInternoEspecificacao', e.target.value)}
-            error={erros?.outroRevestimentoInternoEspecificacao}
+            onChange={(e) =>
+              onChange({
+                ...dados,
+                outroRevestimentoInternoEspecificacao: e.target.value,
+              })
+            }
           />
         )}
 
         <ImageUpload
           label="Imagem do revestimento interno"
           value={dados.imagemRevestimentoInterno}
-          onChange={(imagemRevestimentoInterno) => onChange({ ...dados, imagemRevestimentoInterno })}
+          onChange={(imagemRevestimentoInterno) =>
+            onChange({ ...dados, imagemRevestimentoInterno })
+          }
         />
 
-        <CheckboxGroup
-          label="Cobertura"
-          helperText="Marque todos os tipos de cobertura encontrados."
-          error={erros?.cobertura}
-        >
+        <CheckboxGroup label="Cobertura">
           {OPCOES_COBERTURA.map((opcao) => (
             <CheckboxOption
               key={opcao}
@@ -157,13 +156,14 @@ const EtapaRevestimentos = ({
           ))}
         </CheckboxGroup>
 
-        {dados.cobertura.includes(OPCAO_COBERTURA_OUTRO) && (
+        {coberturaOutro && (
           <Input
             label="Especifique a cobertura"
             placeholder="Especifique, se necessário"
             value={dados.outraCoberturaEspecificacao}
-            onChange={(e) => setCampo('outraCoberturaEspecificacao', e.target.value)}
-            error={erros?.outraCoberturaEspecificacao}
+            onChange={(e) =>
+              onChange({ ...dados, outraCoberturaEspecificacao: e.target.value })
+            }
           />
         )}
 

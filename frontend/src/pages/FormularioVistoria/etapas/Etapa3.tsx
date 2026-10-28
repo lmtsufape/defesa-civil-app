@@ -4,7 +4,13 @@ import {
   OPCOES_PISO,
   OPCOES_SITUACAO_PISO,
 } from '../../../domain/entities';
-import { ImageUpload, Input, RadioGroup, RadioOption } from '../../../components';
+import {
+  CheckboxGroup,
+  CheckboxOption,
+  ImageUpload,
+  Input,
+} from '../../../components';
+import { toggleOpcao } from './toggleOpcao';
 import './Etapa3.css';
 
 export interface EtapaPadraoConstrutivoProps {
@@ -28,22 +34,70 @@ const EtapaPadraoConstrutivo = ({
   erros,
 }: EtapaPadraoConstrutivoProps) => {
   const setCampo = (
-    campo: 'numeroPavimentos' | 'areaAproximada' | 'numeroComodos' |
-      'numeroDormitorios' | 'tempoConstrucao' | 'outroPisoEspecificacao',
+    campo:
+      | 'numeroPavimentos'
+      | 'areaAproximada'
+      | 'numeroComodos'
+      | 'numeroDormitorios'
+      | 'tempoConstrucao'
+      | 'outroPisoEspecificacao',
     valor: string
   ) => {
     onChange({ ...dados, [campo]: valor });
   };
 
-  const handlePiso = (piso: string) => {
+  const pisoSelecionado = Array.isArray(dados.piso)
+    ? dados.piso
+    : dados.piso
+      ? [dados.piso]
+      : [];
+
+  const situacaoPisoSelecionada = Array.isArray(dados.situacaoPiso)
+    ? dados.situacaoPiso
+    : dados.situacaoPiso
+      ? [dados.situacaoPiso]
+      : [];
+
+  const isPisoOutro = (piso: string[]) =>
+    piso.some(
+      (p) =>
+        p === OPCAO_PISO_OUTRO ||
+        p.toLowerCase() === 'outro' ||
+        p.toLowerCase() === 'outro (espec)'
+    );
+
+  const handlePiso = (opcao: string) => {
+    const novoPiso = toggleOpcao(pisoSelecionado, opcao);
+    const temOutro = isPisoOutro(novoPiso);
     onChange({
       ...dados,
-      piso,
-      outroPisoEspecificacao: piso === OPCAO_PISO_OUTRO ? dados.outroPisoEspecificacao : '',
+      piso: novoPiso,
+      outroPisoEspecificacao: temOutro ? dados.outroPisoEspecificacao : '',
     });
   };
 
-  const pisoOutroSelecionado = dados.piso === OPCAO_PISO_OUTRO;
+  const isPisoChecked = (valor: string) => {
+    const valorNorm = valor.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    return pisoSelecionado.some((item) => {
+      const itemNorm = item.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      return item.toLowerCase() === valor.toLowerCase() || itemNorm === valorNorm;
+    });
+  };
+
+  const handleSituacaoPiso = (opcao: string) => {
+    onChange({
+      ...dados,
+      situacaoPiso: toggleOpcao(situacaoPisoSelecionada, opcao),
+    });
+  };
+
+  const isSituacaoPisoChecked = (valor: string) => {
+    return situacaoPisoSelecionada.some(
+      (item) => item.toLowerCase() === valor.toLowerCase()
+    );
+  };
+
+  const pisoOutroSelecionado = isPisoOutro(pisoSelecionado);
 
   return (
     <div className="etapa-card">
@@ -100,21 +154,21 @@ const EtapaPadraoConstrutivo = ({
           error={erros?.tempoConstrucao}
         />
 
-        <RadioGroup
+        <CheckboxGroup
           label="Piso"
           helperText="Selecione o tipo de piso predominante."
           error={erros?.piso}
           required
         >
           {OPCOES_PISO.map(({ valor, rotulo }) => (
-            <RadioOption
+            <CheckboxOption
               key={valor}
               label={rotulo}
-              checked={dados.piso === valor}
+              checked={isPisoChecked(valor)}
               onChange={() => handlePiso(valor)}
             />
           ))}
-        </RadioGroup>
+        </CheckboxGroup>
 
         {pisoOutroSelecionado && (
           <Input
@@ -132,21 +186,21 @@ const EtapaPadraoConstrutivo = ({
           onChange={(imagemPiso) => onChange({ ...dados, imagemPiso })}
         />
 
-        <RadioGroup
+        <CheckboxGroup
           label="Situação do piso"
           helperText="Selecione a situação observada no piso."
           error={erros?.situacaoPiso}
           required
         >
           {OPCOES_SITUACAO_PISO.map(({ valor, rotulo }) => (
-            <RadioOption
+            <CheckboxOption
               key={valor}
               label={rotulo}
-              checked={dados.situacaoPiso === valor}
-              onChange={() => onChange({ ...dados, situacaoPiso: valor })}
+              checked={isSituacaoPisoChecked(valor)}
+              onChange={() => handleSituacaoPiso(valor)}
             />
           ))}
-        </RadioGroup>
+        </CheckboxGroup>
 
         <ImageUpload
           label="Imagem da situação do piso"

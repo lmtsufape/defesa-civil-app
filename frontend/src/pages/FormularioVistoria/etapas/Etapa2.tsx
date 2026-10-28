@@ -1,15 +1,16 @@
+
 import {
   DadosCaracteristicasImovel,
   OPCOES_LOCALIZACAO,
   OPCOES_PRINCIPAIS_CAUSAS,
 } from '../../../domain/entities';
+
 import {
   CheckboxGroup,
   CheckboxOption,
   ImageUpload,
-  RadioGroup,
-  RadioOption,
 } from '../../../components';
+
 import { toggleOpcao } from './toggleOpcao';
 import './Etapa2.css';
 
@@ -27,6 +28,25 @@ const EtapaCaracteristicasImovel = ({
   onChange,
   erros,
 }: EtapaCaracteristicasImovelProps) => {
+  const localizacaoSelecionada = Array.isArray(dados.localizacao)
+    ? dados.localizacao
+    : dados.localizacao
+      ? [dados.localizacao]
+      : [];
+
+  const handleLocalizacao = (valor: string) => {
+    onChange({
+      ...dados,
+      localizacao: toggleOpcao(localizacaoSelecionada, valor),
+    });
+  };
+
+  const isLocalizacaoChecked = (valor: string) => {
+    return localizacaoSelecionada.some(
+      (item) => item.toLowerCase() === valor.toLowerCase()
+    );
+  };
+
   const handleCausa = (valor: string) => {
     onChange({
       ...dados,
@@ -37,33 +57,41 @@ const EtapaCaracteristicasImovel = ({
   return (
     <div className="etapa-card">
       <header className="etapa-card__cabecalho">
-        <h2 className="etapa-card__titulo">Características do imóvel</h2>
+        <h2 className="etapa-card__titulo">
+          Características do imóvel
+        </h2>
+
         <p className="etapa-card__subtitulo">
           Informações sobre o terreno e os riscos observados
         </p>
       </header>
 
       <div className="etapa-card__campos">
-        <RadioGroup
+        <CheckboxGroup
           label="Localização"
-          helperText="Selecione a localização do imóvel."
+          helperText="Selecione as localizações do imóvel."
           error={erros?.localizacao}
           required
         >
           {OPCOES_LOCALIZACAO.map(({ valor, rotulo }) => (
-            <RadioOption
+            <CheckboxOption
               key={valor}
               label={rotulo}
-              checked={dados.localizacao === valor}
-              onChange={() => onChange({ ...dados, localizacao: valor })}
+              checked={isLocalizacaoChecked(valor)}
+              onChange={() => handleLocalizacao(valor)}
             />
           ))}
-        </RadioGroup>
+        </CheckboxGroup>
 
         <ImageUpload
           label="Imagem da localização"
           value={dados.imagemLocalizacao}
-          onChange={(imagemLocalizacao) => onChange({ ...dados, imagemLocalizacao })}
+          onChange={(imagemLocalizacao) =>
+            onChange({
+              ...dados,
+              imagemLocalizacao,
+            })
+          }
         />
 
         <CheckboxGroup
@@ -84,7 +112,12 @@ const EtapaCaracteristicasImovel = ({
         <ImageUpload
           label="Imagem das principais causas"
           value={dados.imagemPrincipaisCausas}
-          onChange={(imagemPrincipaisCausas) => onChange({ ...dados, imagemPrincipaisCausas })}
+          onChange={(imagemPrincipaisCausas) =>
+            onChange({
+              ...dados,
+              imagemPrincipaisCausas,
+            })
+          }
         />
       </div>
     </div>
