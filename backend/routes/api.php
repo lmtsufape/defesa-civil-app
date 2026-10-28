@@ -16,7 +16,10 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::post('/logout', [AuthController::class, 'logout']);
 
-    Route::post('/formularios',       [FormularioController::class, 'store']);
-    Route::get('/formularios',        [FormularioController::class, 'index']);
-    Route::get('/formularios/{id}',   [FormularioController::class, 'show']);
+    Route::post('/formularios',        [FormularioController::class, 'store']);
+    Route::get('/formularios',         [FormularioController::class, 'index']);
+    Route::get('/formularios/{id}',    [FormularioController::class, 'show']);
+    Route::put('/formularios/{id}',    [FormularioController::class, 'update']);
+    Route::patch('/formularios/{id}',  [FormularioController::class, 'update']);
+    Route::delete('/formularios/{id}', [FormularioController::class, 'destroy']);
 });
