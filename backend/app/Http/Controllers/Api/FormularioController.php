@@ -17,7 +17,7 @@ class FormularioController extends Controller
             'endereco'                            => 'required|string|max:255',
             'numero'                              => 'nullable|string|max:20',
 
-            'localizacao'                         => 'required',
+            'localizacao'                         => 'nullable',
             'causas_problemas'                    => 'nullable',
 
             'num_pavimentos'                      => 'nullable|integer',
@@ -123,7 +123,7 @@ class FormularioController extends Controller
             'endereco'                            => 'sometimes|required|string|max:255',
             'numero'                              => 'nullable|string|max:20',
 
-            'localizacao'                         => 'sometimes|required',
+            'localizacao'                         => 'nullable',
             'causas_problemas'                    => 'nullable',
 
             'num_pavimentos'                      => 'nullable|integer',
