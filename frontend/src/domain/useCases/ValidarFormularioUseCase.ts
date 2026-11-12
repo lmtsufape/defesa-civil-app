@@ -24,7 +24,7 @@ const validarIdentificacao = ({ identificacao: d }: FormularioVistoria): ErrosEt
 
 const validarCaracteristicas = ({ caracteristicasImovel: d }: FormularioVistoria): ErrosEtapa => {
   const erros: ErrosEtapa = {};
-  if (!d.localizacao) erros.localizacao = 'Selecione a localização';
+  // Campo localização não é mais obrigatório
   return erros;
 };
 

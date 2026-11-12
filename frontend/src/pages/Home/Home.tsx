@@ -131,8 +131,10 @@ const Home = () => {
     router.push('/formulario-vistoria', 'forward', 'push');
   };
 
-  // TODO: navegar para a tela de continuação/edição da vistoria selecionada.
-  const handleContinuar = (_v: Vistoria) => {};
+  // Navega para a tela de continuação/edição da vistoria selecionada.
+  const handleContinuar = (v: Vistoria) => {
+    router.push(`/formulario-vistoria/${v.id}`, 'forward', 'push');
+  };
 
   const handleVerDetalhes = (v: Vistoria) => {
     router.push(`/visualizacao-vistoria/${v.id}`, 'forward', 'push');
