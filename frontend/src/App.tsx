@@ -117,7 +117,7 @@ const AppRotas = () => {
           }
         />
         <Route
-          path="/formulario-vistoria"
+          path="/formulario-vistoria/:id?"
           element={
             <RotaProtegida>
               <FormularioVistoria />

@@ -474,8 +474,16 @@ export class FormularioService {
       .filter((v): v is Vistoria => !!v);
   }
 
-  private async enfileirar(payload: Record<string, unknown>): Promise<string> {
+  private async enfileirar(payload: Record<string, unknown>, idExistente?: string): Promise<string> {
     const queue = await localDb.queue();
+    
+    if (idExistente?.startsWith('fila-')) {
+      const localId = idExistente.replace('fila-', '');
+      await queue.update(localId, { payload });
+      syncEngine.sincronizarEmBreve();
+      return idExistente;
+    }
+
     const item = await queue.push({ entity: FORMULARIOS_ENTITY, operation: 'create', payload });
     syncEngine.sincronizarEmBreve();
     return `fila-${item.id}`;
@@ -486,24 +494,33 @@ export class FormularioService {
    * guarda na fila de sincronia para ser enviado depois por `sincronizar()`.
    * Erros 4xx (validação, sessão expirada) são repassados para a UI.
    */
-  async enviar(formulario: FormularioVistoria): Promise<EnvioFormularioResultado> {
+  async enviar(formulario: FormularioVistoria, idExistente?: string | null): Promise<EnvioFormularioResultado> {
     const payload = mapearFormularioParaBackend(formulario);
 
     if (!networkAdapter.isOnline()) {
-      const id = await this.enfileirar(payload);
+      const id = await this.enfileirar(payload, idExistente ?? undefined);
       return { enviado: false, id };
     }
 
     try {
+      // Se for um item da fila que agora está online, podemos tentar o POST.
+      // Se for um item que já existe no backend, seria um PUT (mas o foco aqui parece ser os pendentes/offline).
       const res = await apiClient.post<any>('/formularios', payload, { timeoutMs: 10_000 });
-      // Assume o backend retorna o objeto criado ou { data: { id: ... } }
+      
+      // Se era um item da fila, removemos ele após o sucesso na API
+      if (idExistente?.startsWith('fila-')) {
+        const localId = idExistente.replace('fila-', '');
+        const queue = await localDb.queue();
+        await queue.remove(localId);
+      }
+
       const id = String(res?.data?.id || res?.id || '');
       return { enviado: true, id };
     } catch (e) {
       if (isApiError(e) && e.status >= 400 && e.status < 500) {
         throw e;
       }
-      const id = await this.enfileirar(payload);
+      const id = await this.enfileirar(payload, idExistente ?? undefined);
       return { enviado: false, id };
     }
   }

@@ -71,7 +71,6 @@ const EtapaCaracteristicasImovel = ({
           label="Localização"
           helperText="Selecione as localizações do imóvel."
           error={erros?.localizacao}
-          required
         >
           {OPCOES_LOCALIZACAO.map(({ valor, rotulo }) => (
             <CheckboxOption

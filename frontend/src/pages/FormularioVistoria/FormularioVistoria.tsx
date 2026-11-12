@@ -1,6 +1,7 @@
-import { useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { IonContent, IonPage, useIonRouter, useIonToast } from '@ionic/react';
-import { Button, StepIndicator } from '../../components';
+import { useParams } from 'react-router-dom';
+import { Button, Loading, StepIndicator } from '../../components';
 import {
   ETAPAS_FORMULARIO,
   FormularioVistoria as FormularioVistoriaEntity,
@@ -77,6 +78,7 @@ const CloseIcon = () => (
 
 const FormularioVistoria = () => {
   const router = useIonRouter();
+  const { id } = useParams<{ id: string }>();
   const contentRef = useRef<HTMLIonContentElement>(null);
   const [presentToast] = useIonToast();
   const [etapaAtual, setEtapaAtual] = useState(1);
@@ -85,8 +87,32 @@ const FormularioVistoria = () => {
   );
   const [erros, setErros] = useState<ErrosEtapa>({});
   const [isSalvando, setIsSalvando] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [showConcluido, setShowConcluido] = useState(false);
   const [idVistoriaCriada, setIdVistoriaCriada] = useState<string | null>(null);
+
+  const carregarDados = useCallback(async () => {
+    if (!id) return;
+    setIsLoading(true);
+    try {
+      const form = await formularioService.obterPorVistoriaId(id);
+      if (form) {
+        setDadosFormulario(form);
+        setIdVistoriaCriada(id);
+      } else {
+        avisar('Não foi possível carregar os dados para edição.', 'danger');
+      }
+    } catch (e) {
+      console.error(e);
+      avisar('Erro ao carregar os dados da vistoria.', 'danger');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [id]);
+
+  useEffect(() => {
+    carregarDados();
+  }, [carregarDados]);
 
   const totalEtapas = useMemo(() => ETAPAS_FORMULARIO.length, []);
   const infoEtapaAtual = useMemo(
@@ -128,7 +154,7 @@ const FormularioVistoria = () => {
 
     setIsSalvando(true);
     try {
-      const { enviado, id } = await formularioService.enviar(dadosFormulario);
+      const { enviado, id } = await formularioService.enviar(dadosFormulario, idVistoriaCriada);
       avisar(
         enviado
           ? 'Formulário enviado com sucesso!'
@@ -313,7 +339,13 @@ const FormularioVistoria = () => {
 
         <section className="formulario-corpo">
           <div className="formulario-corpo__inner">
-            {renderEtapa()}
+            {isLoading ? (
+              <div style={{ display: 'flex', justifyContent: 'center', padding: '2rem' }}>
+                <Loading label="Carregando dados..." size="md" color="orange" />
+              </div>
+            ) : (
+              renderEtapa()
+            )}
           </div>
         </section>
 

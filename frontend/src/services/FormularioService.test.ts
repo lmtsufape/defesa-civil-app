@@ -130,10 +130,10 @@ describe('primeiraEtapaComErro', () => {
   it('aponta a primeira etapa com campo obrigatório faltando', () => {
     const f = formularioPreenchido();
     f.padraoConstrutivo.piso = [];
-    f.caracteristicasImovel.localizacao = [];
+    // localizacao não é mais obrigatório, então a primeira etapa com erro será a 3
     expect(primeiraEtapaComErro(f)).toEqual({
-      etapa: 2,
-      erros: { localizacao: 'Selecione a localização' },
+      etapa: 3,
+      erros: { piso: 'Selecione o tipo de piso' },
     });
   });
 });
