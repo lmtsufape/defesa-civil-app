@@ -1,6 +1,8 @@
 import { useIonToast, useIonLoading } from '@ionic/react';
 // @ts-ignore
-import html2pdf from 'html2pdf.js';
+import html2canvas from 'html2canvas';
+// @ts-ignore
+import { jsPDF } from 'jspdf';
 import { Filesystem, Directory } from '@capacitor/filesystem';
 import { Share } from '@capacitor/share';
 import { Capacitor } from '@capacitor/core';
@@ -9,6 +11,43 @@ interface PrintOptions {
   fileName: string;
   containerSelector: string;
 }
+
+/**
+ * Converte uma URL de imagem remota em data:URL base64.
+ * Retorna null silenciosamente em caso de falha.
+ */
+const urlParaBase64 = async (src: string): Promise<string | null> => {
+  try {
+    const response = await fetch(src, {
+      mode: 'cors',
+      headers: { 'ngrok-skip-browser-warning': 'true' },
+    });
+    if (!response.ok) return null;
+    const blob = await response.blob();
+    return await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  } catch (e) {
+    console.warn('[usePdfExport] Falha ao converter imagem para base64:', src, e);
+    return null;
+  }
+};
+
+/**
+ * Aguarda uma imagem carregar (ou falhar) no DOM.
+ */
+const aguardarImagem = (img: HTMLImageElement): Promise<void> =>
+  new Promise((resolve) => {
+    if (img.complete && img.naturalWidth > 0) {
+      resolve();
+      return;
+    }
+    img.onload = () => resolve();
+    img.onerror = () => resolve(); // resolve mesmo em erro para não travar o PDF
+  });
 
 /**
  * Hook para gerenciar a exportação de documentos para PDF.
@@ -20,7 +59,7 @@ export const usePdfExport = () => {
 
   const exportToPdf = async ({ fileName, containerSelector }: PrintOptions) => {
     const element = document.querySelector(containerSelector) as HTMLElement;
-    
+
     if (!element) {
       presentToast({
         message: 'Erro: Conteúdo não encontrado.',
@@ -33,102 +72,120 @@ export const usePdfExport = () => {
 
     await presentLoading({
       message: 'Gerando PDF...',
-      spinner: 'crescent'
+      spinner: 'crescent',
     });
 
+    let tempContainer: HTMLDivElement | null = null;
+
     try {
-      // Cria um container temporário visível, mas fora da tela
-      const tempContainer = document.createElement('div');
-      tempContainer.className = 'pdf-export-temp-container';
-      // Adicionamos uma classe específica para forçar o layout desktop no clone
-      tempContainer.classList.add('force-desktop-layout');
-      
-      tempContainer.style.position = 'fixed';
-      tempContainer.style.left = '-10000px';
-      tempContainer.style.top = '0';
-      tempContainer.style.width = '210mm';
-      tempContainer.style.background = '#ffffff';
-      tempContainer.style.zIndex = '-9999';
-      
+      // 1. Cria container temporário fora da tela
+      tempContainer = document.createElement('div');
+      tempContainer.className = 'pdf-export-temp-container force-desktop-layout';
+
+      Object.assign(tempContainer.style, {
+        position: 'fixed',
+        left: '-10000px',
+        top: '0',
+        width: '210mm',
+        background: '#ffffff',
+        zIndex: '-9999',
+      });
+
       const clone = element.cloneNode(true) as HTMLElement;
-      
-      // Garante que o clone e seus filhos mantenham os estilos necessários
-      clone.style.display = 'block';
-      clone.style.visibility = 'visible';
-      clone.style.width = '210mm';
-      clone.style.background = '#ffffff';
-      
+      Object.assign(clone.style, {
+        display: 'block',
+        visibility: 'visible',
+        width: '210mm',
+        background: '#ffffff',
+      });
+
       tempContainer.appendChild(clone);
       document.body.appendChild(tempContainer);
 
-      // Aguarda renderização
-      await new Promise(resolve => setTimeout(resolve, 500));
+      // 2. Converte TODAS as imagens remotas para base64 ANTES de capturar o canvas.
+      //    Isso garante que o html2canvas nunca precisará fazer requisições externas.
+      const images = Array.from(clone.querySelectorAll('img')) as HTMLImageElement[];
 
-      const opt = {
-        margin: 0,
-        filename: `${fileName}.pdf`,
-        image: { type: 'jpeg' as const, quality: 0.98 },
-        html2canvas: { 
-          scale: 2, 
-          useCORS: true,
-          letterRendering: true,
+      await Promise.all(
+        images.map(async (img) => {
+          const src = img.src;
+          if (!src || src.startsWith('data:') || src.startsWith('blob:')) return;
+
+          const base64 = await urlParaBase64(src);
+          if (base64) {
+            img.src = base64;
+            await aguardarImagem(img);
+          }
+
+          // Garante visibilidade
+          img.style.display = 'block';
+          img.style.opacity = '1';
+          img.style.visibility = 'visible';
+          img.removeAttribute('crossorigin');
+          img.removeAttribute('loading');
+        })
+      );
+
+      // 3. Aguarda um tick extra para o layout estabilizar
+      await new Promise((resolve) => setTimeout(resolve, 800));
+
+      const pdf = new jsPDF({
+        unit: 'mm',
+        format: 'a4',
+        orientation: 'portrait',
+        compress: true,
+      });
+
+      const pages = Array.from(clone.querySelectorAll('.pdf-page')) as HTMLElement[];
+
+      for (let i = 0; i < pages.length; i++) {
+        const page = pages[i];
+
+        // Garante visibilidade da página
+        page.style.display = 'flex';
+        page.style.visibility = 'visible';
+
+        // Renderiza cada página individualmente.
+        // NÃO usa onclone — as imagens já estão em base64 no DOM clonado.
+        const canvas = await html2canvas(page, {
+          scale: 2,
+          useCORS: false,      // desabilitado: todas imagens já são base64
+          allowTaint: false,   // desabilitado: não há imagens externas
           logging: false,
           backgroundColor: '#ffffff',
-          windowWidth: 1200, // Força o html2canvas a "pensar" que está em uma tela de 1200px (Desktop)
-          onclone: (doc: Document) => {
-            const el = doc.querySelector('.pdf-export-temp-container') as HTMLElement;
-            if (el) {
-              el.style.left = '0';
-              el.style.position = 'relative';
-              const container = el.querySelector('.pdf-container') as HTMLElement;
-              if (container) {
-                container.style.gap = '0';
-                container.style.padding = '0';
-                // Remove qualquer restrição de largura que venha do mobile
-                container.style.width = '210mm';
-                container.style.minWidth = '210mm';
-              }
-            }
-          }
-        },
-        jsPDF: { 
-          unit: 'mm' as const, 
-          format: 'a4' as const, 
-          orientation: 'portrait' as const,
-          compress: true
-        },
-        pagebreak: { mode: 'css' }
-      };
+          width: page.offsetWidth || 794,
+          height: page.offsetHeight || 1123,
+          windowWidth: 800,
+        });
+
+        const imgData = canvas.toDataURL('image/jpeg', 0.95);
+
+        if (i > 0) pdf.addPage();
+        pdf.addImage(imgData, 'JPEG', 0, 0, 210, 297, undefined, 'SLOW');
+      }
 
       const isNative = Capacitor.isNativePlatform();
 
       if (isNative) {
-        // No Mobile (Capacitor): Gera o PDF como base64 e usa o Filesystem + Share
-        const pdfBase64 = await html2pdf().set(opt).from(clone).output('datauristring');
+        const pdfBase64 = pdf.output('datauristring');
         const base64Content = pdfBase64.split(',')[1];
         const fullFileName = `${fileName}.pdf`;
 
-        // Salva o arquivo temporariamente para poder compartilhar/abrir
         const savedFile = await Filesystem.writeFile({
           path: fullFileName,
           data: base64Content,
-          directory: Directory.Cache // Usa cache para facilitar o compartilhamento
+          directory: Directory.Cache,
         });
 
-        // Abre a planilha de compartilhamento nativa (isso faz aparecer a notificação/opções no topo)
         await Share.share({
           title: 'Vistoria Técnica',
           text: 'PDF da Vistoria Técnica',
           url: savedFile.uri,
-          dialogTitle: 'Abrir ou Salvar PDF'
+          dialogTitle: 'Abrir ou Salvar PDF',
         });
-
       } else {
-        // No Navegador (Desktop/Web): Download direto padrão
-        await html2pdf().set(opt).from(clone).save();
+        pdf.save(`${fileName}.pdf`);
       }
-
-      document.body.removeChild(tempContainer);
 
       presentToast({
         message: isNative ? 'PDF pronto para salvar ou compartilhar!' : 'PDF baixado com sucesso!',
@@ -137,7 +194,7 @@ export const usePdfExport = () => {
         position: 'bottom',
       });
     } catch (error) {
-      console.error('Erro ao gerar PDF:', error);
+      console.error('[usePdfExport] Erro ao gerar PDF:', error);
       presentToast({
         message: 'Não foi possível gerar o PDF.',
         duration: 3000,
@@ -145,6 +202,9 @@ export const usePdfExport = () => {
         position: 'bottom',
       });
     } finally {
+      if (tempContainer?.parentNode) {
+        tempContainer.parentNode.removeChild(tempContainer);
+      }
       dismissLoading();
     }
   };

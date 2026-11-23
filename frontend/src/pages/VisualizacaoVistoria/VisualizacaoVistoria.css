@@ -36,7 +36,8 @@
 }
 
 /* Forçamos o grid de 2 colunas mesmo se estiver no mobile, quando dentro do clone de exportação */
-.force-desktop-layout .pdf-grid-2 {
+.force-desktop-layout .pdf-grid-2,
+.force-desktop-layout .pdf-photos-grid {
   display: grid !important;
   grid-template-columns: 1fr 1fr !important;
   gap: 10px !important;
@@ -204,6 +205,43 @@
   transform: scale(0.95);
 }
 
+/* Registros Fotográficos */
+.pdf-photos-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 15px;
+  margin-top: 10px;
+}
+
+.pdf-photo-item {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  border: 1px solid #eee;
+  padding: 5px;
+  border-radius: 4px;
+}
+
+.pdf-photo-img {
+  width: 100%;
+  height: 100mm; /* Altura otimizada para grade 2x2 em A4 */
+  object-fit: cover;
+  border-radius: 2px;
+  background: #f9f9f9;
+}
+
+.pdf-photo-label {
+  font-size: 8pt;
+  font-weight: bold;
+  text-align: center;
+  color: #555;
+  text-transform: uppercase;
+}
+
+.btn-baixar:active {
+  transform: scale(0.95);
+}
+
 
 /* Estilos exclusivos para a Impressão (Mantém o formato A4 oficial) */
 @media print {
@@ -247,11 +285,13 @@
     overflow: hidden !important;
     position: relative !important;
     background: white !important;
-    page-break-after: always !important;
+    page-break-after: auto !important;
+    break-after: auto !important;
   }
 
-  .pdf-page:last-child {
-    page-break-after: avoid !important;
+  .pdf-page + .pdf-page {
+    page-break-before: always !important;
+    break-before: page !important;
   }
 
   .pdf-grid-2 {

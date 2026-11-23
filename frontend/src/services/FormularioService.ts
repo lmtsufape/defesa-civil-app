@@ -5,7 +5,7 @@ import {
   StatusVistoria,
   Vistoria,
 } from '../domain/entities';
-import { apiClient, isApiError, localDb, LocalSyncQueueRow } from '../data';
+import { apiClient, isApiError, localDb, LocalSyncQueueRow, env } from '../data';
 import { networkAdapter, syncEngine } from '../sync';
 
 export const FORMULARIOS_ENTITY = 'formularios';
@@ -132,6 +132,38 @@ export const mapearFormularioParaBackend = (
     payload.intervencao_piso = intervencoes.piso;
   }
 
+  // Imagens
+  const adicionarImagem = (campo: string, valor?: string) => {
+    if (valor && valor.trim()) {
+      payload[campo] = valor.trim();
+    }
+  };
+
+  adicionarImagem('imagemLocalizacao', caracteristicasImovel?.imagemLocalizacao);
+  adicionarImagem('imagemPrincipaisCausas', caracteristicasImovel?.imagemPrincipaisCausas);
+  adicionarImagem('imagemPiso', padraoConstrutivo?.imagemPiso);
+  adicionarImagem('imagemSituacaoPiso', padraoConstrutivo?.imagemSituacaoPiso);
+  adicionarImagem('imagemEstrutura', estrutura?.imagemEstrutura);
+  adicionarImagem('imagemVedacao', estrutura?.imagemVedacao);
+  adicionarImagem('imagemSituacaoParede', estrutura?.imagemSituacaoParede);
+  adicionarImagem('imagemRevestimentoExterno', revestimentos?.imagemRevestimentoExterno);
+  adicionarImagem('imagemRevestimentoInterno', revestimentos?.imagemRevestimentoInterno);
+  adicionarImagem('imagemCobertura', revestimentos?.imagemCobertura);
+  adicionarImagem('imagemConservacaoCobertura', conservacao?.imagemConservacaoCobertura);
+  adicionarImagem('imagemConservacaoEdificacao', conservacao?.imagemConservacaoEdificacao);
+  adicionarImagem('imagemInstalacaoEletrica', conservacao?.imagemInstalacaoEletrica);
+  adicionarImagem('imagemSanitario', conservacao?.imagemSanitario);
+  adicionarImagem('imagemDestinoEsgoto', destinos?.imagemDestinoEsgoto);
+  adicionarImagem('imagemDestinoAguasServidas', destinos?.imagemDestinoAguasServidas);
+  adicionarImagem('imagemDestinoLixo', destinos?.imagemDestinoLixo);
+  adicionarImagem('imagemParede', intervencoes?.imagemParede);
+  adicionarImagem('imagemCoberta', intervencoes?.imagemCoberta);
+  adicionarImagem('imagemIndicacaoAtuacao', intervencoes?.imagemIndicacaoAtuacao);
+  adicionarImagem('imagemIndicacaoDemolicao', intervencoes?.imagemIndicacaoDemolicao);
+  adicionarImagem('imagemPisoIntervencao', intervencoes?.imagemPiso);
+  adicionarImagem('imagemMotivoRemocao', remocao?.imagemMotivoRemocao);
+  adicionarImagem('imagemEncaminhamentos', remocao?.imagemEncaminhamentos);
+
   if (observacao) {
     payload.observacoes = textoOuNull(observacao.observacoes);
   }
@@ -167,6 +199,7 @@ type FormularioBackendShape = {
   localidade?: string;
   preenchido_em?: string | null;
   created_at?: string | null;
+  fotos_urls?: Record<string, string>;
   [key: string]: unknown;
 };
 
@@ -184,6 +217,39 @@ const arrayDe = (valor: unknown): string[] => {
 export const mapearBackendParaFormulario = (raw: unknown): FormularioVistoria => {
   if (!raw || typeof raw !== 'object') return FORMULARIO_INICIAL_VAZIO;
   const f = raw as FormularioBackendShape;
+  const urls = f.fotos_urls || {};
+  const fotosRaw = (f.fotos as Record<string, string>) || {};
+
+  /** Pega a URL do backend ou o base64 que estava no payload (offline). */
+  const img = (campo: string, fallback?: string): string => {
+    // 1. Tenta a URL já pronta do backend
+    if (urls[campo]) return urls[campo];
+    
+    // 2. Tenta o valor no root do payload (base64 do offline ou URL persistida)
+    const noRoot = textoDe(f[campo]);
+    if (noRoot && (noRoot.startsWith('data:image/') || noRoot.startsWith('http'))) return noRoot;
+
+    // 3. Tenta dentro do objeto fotos (caso venha o raw do backend sem fotos_urls)
+    if (fotosRaw[campo]) {
+      const valorRaw = fotosRaw[campo];
+      if (typeof valorRaw === 'string') {
+        if (valorRaw.startsWith('data:image/')) return valorRaw;
+        // Se for um path relativo, tentamos construir a URL se tivermos o API_URL
+        if (!valorRaw.startsWith('http')) {
+          return `${env.API_URL}/storage/${valorRaw}`;
+        }
+        return valorRaw;
+      }
+    }
+
+    if (fallback) {
+      if (urls[fallback]) return urls[fallback];
+      const noRootFallback = textoDe(f[fallback]);
+      if (noRootFallback && noRootFallback.startsWith('data:image/')) return noRootFallback;
+    }
+
+    return '';
+  };
 
   return {
     identificacao: {
@@ -196,8 +262,8 @@ export const mapearBackendParaFormulario = (raw: unknown): FormularioVistoria =>
     caracteristicasImovel: {
       localizacao: arrayDe(f.localizacao),
       principaisCausas: arrayDe(f.causas_problemas),
-      imagemLocalizacao: '',
-      imagemPrincipaisCausas: '',
+      imagemLocalizacao: img('imagemLocalizacao'),
+      imagemPrincipaisCausas: img('imagemPrincipaisCausas'),
     },
     padraoConstrutivo: {
       numeroPavimentos: String(f.num_pavimentos ?? ''),
@@ -208,17 +274,17 @@ export const mapearBackendParaFormulario = (raw: unknown): FormularioVistoria =>
       piso: arrayDe(f.piso),
       outroPisoEspecificacao: textoDe(f.piso_especificacao),
       situacaoPiso: arrayDe(f.situacao_piso),
-      imagemPiso: '',
-      imagemSituacaoPiso: '',
+      imagemPiso: img('imagemPiso'),
+      imagemSituacaoPiso: img('imagemSituacaoPiso'),
     },
     estrutura: {
       estrutura: arrayDe(f.estrutura),
       vedacao: arrayDe(f.vedacao),
       outraVedacaoEspecificacao: textoDe(f.vedacao_especificacao),
       situacaoParede: arrayDe(f.situacao_parede),
-      imagemEstrutura: '',
-      imagemVedacao: '',
-      imagemSituacaoParede: '',
+      imagemEstrutura: img('imagemEstrutura'),
+      imagemVedacao: img('imagemVedacao'),
+      imagemSituacaoParede: img('imagemSituacaoParede'),
     },
     revestimentos: {
       revestimentoExterno: arrayDe(f.revestimento_externo),
@@ -229,9 +295,9 @@ export const mapearBackendParaFormulario = (raw: unknown): FormularioVistoria =>
       outroRevestimentoInternoEspecificacao: textoDe(f.revestimento_interno_especificacao),
       cobertura: arrayDe(f.cobertura),
       outraCoberturaEspecificacao: textoDe(f.cobertura_especificacao),
-      imagemRevestimentoExterno: '',
-      imagemRevestimentoInterno: '',
-      imagemCobertura: '',
+      imagemRevestimentoExterno: img('imagemRevestimentoExterno'),
+      imagemRevestimentoInterno: img('imagemRevestimentoInterno'),
+      imagemCobertura: img('imagemCobertura'),
     },
     conservacao: {
       conservacaoCobertura: arrayDe(f.conservacao_cobertura),
@@ -239,10 +305,10 @@ export const mapearBackendParaFormulario = (raw: unknown): FormularioVistoria =>
       instalacaoEletrica: arrayDe(f.instalacao_eletrica),
       sanitario: arrayDe(f.sanitario),
       outroSanitarioEspecificacao: textoDe(f.sanitario_especificacao),
-      imagemConservacaoCobertura: '',
-      imagemConservacaoEdificacao: '',
-      imagemInstalacaoEletrica: '',
-      imagemSanitario: '',
+      imagemConservacaoCobertura: img('imagemConservacaoCobertura'),
+      imagemConservacaoEdificacao: img('imagemConservacaoEdificacao'),
+      imagemInstalacaoEletrica: img('imagemInstalacaoEletrica'),
+      imagemSanitario: img('imagemSanitario'),
     },
     destinos: {
       destinoEsgoto: arrayDe(f.destino_esgoto_primario),
@@ -251,9 +317,9 @@ export const mapearBackendParaFormulario = (raw: unknown): FormularioVistoria =>
       outroDestinoAguasServidasEspecificacao: textoDe(f.destino_aguas_servidas_especificacao),
       destinoLixo: arrayDe(f.destino_lixo),
       outroDestinoLixoEspecificacao: textoDe(f.destino_lixo_especificacao),
-      imagemDestinoEsgoto: '',
-      imagemDestinoAguasServidas: '',
-      imagemDestinoLixo: '',
+      imagemDestinoEsgoto: img('imagemDestinoEsgoto'),
+      imagemDestinoAguasServidas: img('imagemDestinoAguasServidas'),
+      imagemDestinoLixo: img('imagemDestinoLixo'),
     },
     intervencoes: {
       parede: arrayDe(f.intervencao_parede),
@@ -261,11 +327,11 @@ export const mapearBackendParaFormulario = (raw: unknown): FormularioVistoria =>
       indicacaoAtuacao: arrayDe(f.indicacao_atuacao),
       indicacaoDemolicao: arrayDe(f.indicacao_demolicao),
       piso: arrayDe(f.intervencao_piso),
-      imagemParede: '',
-      imagemCoberta: '',
-      imagemIndicacaoAtuacao: '',
-      imagemIndicacaoDemolicao: '',
-      imagemPiso: '',
+      imagemParede: img('imagemParede'),
+      imagemCoberta: img('imagemCoberta'),
+      imagemIndicacaoAtuacao: img('imagemIndicacaoAtuacao'),
+      imagemIndicacaoDemolicao: img('imagemIndicacaoDemolicao'),
+      imagemPiso: img('imagemPisoIntervencao', 'imagemPiso'),
     },
     observacao: {
       observacoes: textoDe(f.observacoes),
@@ -274,8 +340,8 @@ export const mapearBackendParaFormulario = (raw: unknown): FormularioVistoria =>
       motivoRemocao: arrayDe(f.motivo_remocao),
       outroMotivoRemocaoEspecificacao: textoDe(f.motivo_remocao_especificacao),
       encaminhamentos: arrayDe(f.encaminhamentos),
-      imagemMotivoRemocao: '',
-      imagemEncaminhamentos: '',
+      imagemMotivoRemocao: img('imagemMotivoRemocao'),
+      imagemEncaminhamentos: img('imagemEncaminhamentos'),
     },
     grauRisco: {
       grauRisco: textoDe(f.grau_risco),
@@ -402,7 +468,7 @@ export const sincronizarItemFormulario = async (item: LocalSyncQueueRow): Promis
   if (item.operation !== 'create') {
     throw new Error(`Operação de formulário não suportada: ${item.operation}`);
   }
-  await apiClient.post('/formularios', item.payload, { timeoutMs: 10_000 });
+  await apiClient.post('/formularios', item.payload, { timeoutMs: 30_000 });
 };
 
 export interface EnvioFormularioResultado {
@@ -442,13 +508,22 @@ export class FormularioService {
         return mapearBackendParaFormulario(data);
       }
 
-      // Se for da fila offline
-      if (vistoriaId.startsWith('fila-')) {
-        const localId = vistoriaId.replace('fila-', '');
+      // Se for da fila offline ou cache local
+      if (vistoriaId.startsWith('fila-') || vistoriaId.startsWith('local-')) {
+        const localId = vistoriaId.replace('fila-', '').replace('local-', '');
+        
+        // Tenta na fila primeiro
         const queue = await localDb.queue();
-        const item = await queue.get(localId);
-        if (item && item.entity === FORMULARIOS_ENTITY) {
-          return mapearBackendParaFormulario(item.payload);
+        const itemFila = await queue.get(localId);
+        if (itemFila && itemFila.entity === FORMULARIOS_ENTITY) {
+          return mapearBackendParaFormulario(itemFila.payload);
+        }
+
+        // Tenta no cache de vistorias (caso tenha sido salvo mas não esteja na fila)
+        const store = await localDb.vistorias();
+        const itemLocal = await store.get(vistoriaId);
+        if (itemLocal) {
+          return mapearBackendParaFormulario(itemLocal.payload);
         }
       }
 
